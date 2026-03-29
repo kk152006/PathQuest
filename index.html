@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PathQuest: Algorithm Showdown</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Press+Start+2P&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- BACKGROUND GRID -->
+    <div class="grid-background"></div>
+
+    <!-- SCREEN 1: START SCREEN -->
+    <div id="screen-start" class="screen screen-active">
+        <div class="start-content">
+            <h1 class="game-title">PATHQUEST</h1>
+            <h2 class="game-subtitle">Algorithm Showdown</h2>
+            <p class="game-desc">Draw your path. Then watch the algorithms compete.</p>
+            <div class="button-group">
+                <button class="btn btn-primary btn-large" onclick="showScreen('screen-game')">PLAY</button>
+                <button class="btn btn-secondary btn-large">HOW TO PLAY</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCREEN 2: GAME SCREEN -->
+    <div id="screen-game" class="screen">
+        <!-- Top Bar -->
+        <div class="top-bar">
+            <button class="btn btn-text" onclick="showScreen('screen-start')">◄ BACK</button>
+            <div class="mode-indicator">Mode: <span class="highlight">Drawing...</span></div>
+            <div class="top-spacer"></div>
+        </div>
+
+        <div class="game-layout">
+            <!-- Left Side: Canvas -->
+            <div class="canvas-container">
+                <canvas id="gameCanvas" width="600" height="600"></canvas>
+            </div>
+
+            <!-- Right Side: Control Panel -->
+            <div class="control-panel">
+                <div class="panel-section">
+                    <h3 class="section-title">YOUR TURN</h3>
+                    <div class="button-group-row">
+                        <button class="btn btn-utility active">Draw Path</button>
+                        <button class="btn btn-utility">Clear</button>
+                    </div>
+                </div>
+
+                <div class="panel-section">
+                    <h3 class="section-title">ALGORITHMS</h3>
+                    <div class="checkbox-group">
+                        <label class="checkbox-container">
+                            <input type="checkbox" id="bfsCheck" checked>
+                            <span class="checkmark bfs-color"></span>
+                            BFS
+                        </label>
+                        <label class="checkbox-container">
+                            <input type="checkbox" id="dfsCheck" checked>
+                            <span class="checkmark dfs-color"></span>
+                            DFS
+                        </label>
+                        <label class="checkbox-container">
+                            <input type="checkbox" id="dijkstraCheck" checked>
+                            <span class="checkmark dijkstra-color"></span>
+                            Dijkstra
+                        </label>
+                        <label class="checkbox-container">
+                            <input type="checkbox" id="astarCheck" checked>
+                            <span class="checkmark astar-color"></span>
+                            A*
+                        </label>
+                    </div>
+                </div>
+
+                <div class="panel-section stats-section">
+                    <h3 class="section-title">LIVE STATS</h3>
+                    <div id="stats-panel" class="stats-panel">
+                        <p class="stat-placeholder">Waiting for algorithms to run...</p>
+                    </div>
+                </div>
+
+                <button id="runBtn" class="btn btn-execute">RUN ALGORITHMS</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCREEN 3: RESULTS SCREEN -->
+    <div id="screen-results" class="screen">
+        <div class="results-content">
+            <h2 class="round-title">ROUND COMPLETE</h2>
+            
+            <div class="table-container">
+                <table class="results-table">
+                    <thead>
+                        <tr>
+                            <th>Algorithm</th>
+                            <th>Path Length</th>
+                            <th>Steps Explored</th>
+                            <th>Time Taken</th>
+                            <th>Efficiency Score</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="row-player">
+                            <td>Player</td>
+                            <td>-</td>
+                            <td>-</td>
+                            <td>-</td>
+                            <td>-</td>
+                        </tr>
+                        <tr class="row-bfs">
+                            <td>BFS</td>
+                            <td id="bfs-path">-</td>
+                            <td id="bfs-steps">-</td>
+                            <td id="bfs-time">-</td>
+                            <td id="bfs-efficiency">-</td>
+                        </tr>
+                        <tr class="row-dfs">
+                            <td>DFS</td>
+                            <td id="dfs-path">-</td>
+                            <td id="dfs-steps">-</td>
+                            <td id="dfs-time">-</td>
+                            <td id="dfs-efficiency">-</td>
+                        </tr>
+                        <tr class="row-dijkstra">
+                            <td>Dijkstra</td>
+                            <td id="dijkstra-path">-</td>
+                            <td id="dijkstra-steps">-</td>
+                            <td id="dijkstra-time">-</td>
+                            <td id="dijkstra-efficiency">-</td>
+                        </tr>
+                        <tr class="row-astar winner-row">
+                            <td class="winner-label">🏆 A*</td>
+                            <td id="astar-path">-</td>
+                            <td id="astar-steps">-</td>
+                            <td id="astar-time">-</td>
+                            <td id="astar-efficiency">-</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="button-group-row justify-center mt-30">
+                <button class="btn btn-primary btn-large" onclick="showScreen('screen-game')">PLAY AGAIN</button>
+                <button class="btn btn-secondary btn-large" onclick="showScreen('screen-start')">CHANGE MAP</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Screen Switching Logic -->
+    <script>
+        function showScreen(id) {
+            document.querySelectorAll('.screen').forEach(screen => {
+                screen.classList.remove('screen-active');
+            });
+            document.getElementById(id).classList.add('screen-active');
+        }
+    </script>
+
+    <!-- JS Files -->
+    <script src="ui.js"></script>
+    <script src="animator.js"></script>
+    <script src="player.js"></script>
+    <script src="algorithms.js"></script>
+    <script src="game.js"></script>
+</body>
+</html>
