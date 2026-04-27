@@ -1,5 +1,4 @@
 package com.pathquest.controller;
-
 import com.pathquest.algorithms.BFS;
 import com.pathquest.algorithms.DFS;
 import com.pathquest.algorithms.Dijkstra;
@@ -7,14 +6,11 @@ import com.pathquest.algorithms.AStar;
 import com.pathquest.model.PathRequest;
 import com.pathquest.model.PathResult;
 import org.springframework.web.bind.annotation.*;
-
 import java.util.ArrayList;
-
 @RestController
 @RequestMapping("/api")
 @CrossOrigin(origins = "*")
 public class PathfindingController {
-
     @PostMapping("/run-algorithm")
     public PathResult runAlgorithm(@RequestBody PathRequest request) {
         if ("BFS".equalsIgnoreCase(request.getAlgorithm())) {
@@ -50,8 +46,6 @@ public class PathfindingController {
                 request.getEnd().getCol()
             );
         }
-        
-        // Return dummy for others
         return new PathResult(
                 request.getAlgorithm() != null ? request.getAlgorithm() : "Unknown",
                 0,

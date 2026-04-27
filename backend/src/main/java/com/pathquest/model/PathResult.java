@@ -1,7 +1,5 @@
 package com.pathquest.model;
-
 import java.util.List;
-
 public class PathResult {
     private String name;
     private int pathLength;
@@ -10,9 +8,7 @@ public class PathResult {
     private boolean pathFound;
     private List<int[]> path;
     private List<int[]> visitedNodes;
-
     public PathResult() {}
-
     public PathResult(String name, int pathLength, int stepsExplored, long timeTaken, boolean pathFound, List<int[]> path, List<int[]> visitedNodes) {
         this.name = name;
         this.pathLength = pathLength;
@@ -22,7 +18,6 @@ public class PathResult {
         this.path = path;
         this.visitedNodes = visitedNodes;
     }
-
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
     public int getPathLength() { return pathLength; }

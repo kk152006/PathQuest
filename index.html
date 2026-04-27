@@ -4,170 +4,206 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PathQuest: Algorithm Showdown</title>
-    <!-- Google Fonts -->
+    <meta name="description" content="Navigate mazes and compete against pathfinding algorithms!">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Press+Start+2P&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Press+Start+2P&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <!-- BACKGROUND GRID -->
-    <div class="grid-background"></div>
+    <div class="bg-grid"></div>
+    <div class="bg-glow"></div>
 
-    <!-- SCREEN 1: START SCREEN -->
-    <div id="screen-start" class="screen screen-active">
-        <div class="start-content">
-            <h1 class="game-title">PATHQUEST</h1>
-            <h2 class="game-subtitle">Algorithm Showdown</h2>
-            <p class="game-desc">Draw your path. Then watch the algorithms compete.</p>
-            <div class="button-group">
-                <button class="btn btn-primary btn-large" onclick="showScreen('screen-game')">PLAY</button>
-                <button class="btn btn-secondary btn-large">HOW TO PLAY</button>
+    <!-- ========== LOGIN SCREEN ========== -->
+    <div id="screen-login" class="screen screen-active">
+        <div class="center-content">
+            <h1 class="game-title">PATH<span class="title-accent">QUEST</span></h1>
+            <p class="game-subtitle">Algorithm Showdown</p>
+            <div class="glass-card login-card">
+                <h2 class="card-heading">Enter the Arena</h2>
+                <p class="card-desc">Navigate the maze. Beat the algorithms. Claim the throne.</p>
+                <div class="input-group">
+                    <label class="input-label" for="loginNameInput">Your Name</label>
+                    <input type="text" id="loginNameInput" placeholder="e.g. Player One" class="input-field" maxlength="20" autocomplete="off">
+                    <p class="input-error" id="loginError"></p>
+                </div>
+                <button class="btn btn-primary btn-large" id="loginBtn" onclick="handleLogin()">START ADVENTURE →</button>
+            </div>
+            <div class="hint-row">
+                <span class="hint-chip">🕹️ Arrow Keys / WASD to move</span>
+                <span class="hint-chip">🎯 Reach the END tile</span>
+                <span class="hint-chip">🏆 Beat the algorithms!</span>
             </div>
         </div>
     </div>
 
-    <!-- SCREEN 2: GAME SCREEN -->
+    <!-- ========== DIFFICULTY SCREEN ========== -->
+    <div id="screen-difficulty" class="screen">
+        <div class="center-content">
+            <button class="btn btn-ghost back-btn" onclick="showScreen('screen-login')">◄ Back</button>
+            <h2 class="section-hero">Choose Your Challenge</h2>
+            <p class="section-sub">Welcome, <span id="playerNameDisplay" class="accent-text">Player</span>! Select a difficulty to begin.</p>
+            <div class="diff-cards">
+                <div class="diff-card glass-card diff-easy" onclick="startGame('Easy')" id="card-easy">
+                    <div class="diff-icon">🌿</div>
+                    <h3 class="diff-title">Easy</h3>
+                    <p class="diff-size">10 × 10 Grid</p>
+                    <p class="diff-desc">Open paths, fewer obstacles.</p>
+                    <span class="diff-badge badge-easy">BEGINNER</span>
+                </div>
+                <div class="diff-card glass-card diff-medium" onclick="startGame('Medium')" id="card-medium">
+                    <div class="diff-icon">⚡</div>
+                    <h3 class="diff-title">Medium</h3>
+                    <p class="diff-size">20 × 20 Grid</p>
+                    <p class="diff-desc">Balanced challenge for veterans.</p>
+                    <span class="diff-badge badge-medium">STANDARD</span>
+                </div>
+                <div class="diff-card glass-card diff-hard" onclick="startGame('Hard')" id="card-hard">
+                    <div class="diff-icon">🔥</div>
+                    <h3 class="diff-title">Hard</h3>
+                    <p class="diff-size">30 × 30 Grid</p>
+                    <p class="diff-desc">Dense maze. Only experts survive.</p>
+                    <span class="diff-badge badge-hard">EXPERT</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== GAME SCREEN ========== -->
     <div id="screen-game" class="screen">
-        <!-- Top Bar -->
         <div class="top-bar">
-            <button class="btn btn-text" onclick="showScreen('screen-start')">◄ BACK</button>
-            <div class="mode-indicator">Mode: <span class="highlight">Drawing...</span></div>
-            <div class="top-spacer"></div>
-        </div>
-
-        <div class="game-layout">
-            <!-- Left Side: Canvas -->
-            <div class="canvas-container">
-                <canvas id="gameCanvas" width="600" height="600"></canvas>
+            <button class="btn btn-ghost" onclick="confirmBack()">◄ Menu</button>
+            <div class="top-center">
+                <span class="top-name" id="topPlayerName"></span>
+                <span class="top-badge" id="topDifficulty"></span>
             </div>
-
-            <!-- Right Side: Control Panel -->
-            <div class="control-panel">
+            <div class="top-stats">
+                <span class="top-stat">Steps: <strong id="liveSteps">0</strong></span>
+                <span class="top-stat">Time: <strong id="liveTime">0s</strong></span>
+            </div>
+        </div>
+        <div class="game-layout">
+            <div class="canvas-area">
+                <canvas id="gameCanvas" width="600" height="600"></canvas>
+                <div class="canvas-hint" id="canvasHint">🎮 Use <kbd>↑↓←→</kbd> or <kbd>WASD</kbd> to navigate to <span style="color:#ef4444;font-weight:700">E</span></div>
+            </div>
+            <div class="control-panel glass-card">
                 <div class="panel-section">
-                    <h3 class="section-title">YOUR TURN</h3>
-                    <div class="button-group-row">
-                        <button class="btn btn-utility active">Draw Path</button>
-                        <button class="btn btn-utility">Clear</button>
+                    <h3 class="section-label">PLAYER STATUS</h3>
+                    <div class="status-box" id="statusBox">
+                        <span id="statusIcon">⏳</span>
+                        <span id="statusText">Move to the END tile (E)</span>
                     </div>
                 </div>
-
                 <div class="panel-section">
-                    <h3 class="section-title">ALGORITHMS</h3>
+                    <h3 class="section-label">MAP LEGEND</h3>
+                    <div class="legend-list">
+                        <div class="legend-row"><span class="tile-dot" style="background:#10b981;color:#fff;font-size:9px;font-weight:700;">S</span> Start</div>
+                        <div class="legend-row"><span class="tile-dot" style="background:#ef4444;color:#fff;font-size:9px;font-weight:700;">E</span> End</div>
+                        <div class="legend-row"><span class="tile-dot" style="background:#475569;"></span> Wall (blocked)</div>
+                        <div class="legend-row"><span class="tile-dot" style="background:#60a5fa;"></span> Water (blocked)</div>
+                        <div class="legend-row"><span class="tile-dot" style="background:#fbbf24;"></span> Sand (walkable)</div>
+                        <div class="legend-row"><span class="tile-dot" style="background:#1e293b;border:1px solid #334155;"></span> Open path</div>
+                    </div>
+                </div>
+                <div class="panel-section">
+                    <h3 class="section-label">ALGORITHMS</h3>
                     <div class="checkbox-group">
-                        <label class="checkbox-container">
-                            <input type="checkbox" id="bfsCheck" checked>
-                            <span class="checkmark bfs-color"></span>
-                            BFS
-                        </label>
-                        <label class="checkbox-container">
-                            <input type="checkbox" id="dfsCheck" checked>
-                            <span class="checkmark dfs-color"></span>
-                            DFS
-                        </label>
-                        <label class="checkbox-container">
-                            <input type="checkbox" id="dijkstraCheck" checked>
-                            <span class="checkmark dijkstra-color"></span>
-                            Dijkstra
-                        </label>
-                        <label class="checkbox-container">
-                            <input type="checkbox" id="astarCheck" checked>
-                            <span class="checkmark astar-color"></span>
-                            A*
-                        </label>
+                        <label class="cb-label"><input type="checkbox" id="bfsCheck" checked><span class="cb-box bfs-col"></span><span>BFS</span></label>
+                        <label class="cb-label"><input type="checkbox" id="dfsCheck" checked><span class="cb-box dfs-col"></span><span>DFS</span></label>
+                        <label class="cb-label"><input type="checkbox" id="dijkstraCheck" checked><span class="cb-box dij-col"></span><span>Dijkstra</span></label>
+                        <label class="cb-label"><input type="checkbox" id="astarCheck" checked><span class="cb-box ast-col"></span><span>A*</span></label>
                     </div>
                 </div>
-
-                <div class="panel-section stats-section">
-                    <h3 class="section-title">LIVE STATS</h3>
-                    <div id="stats-panel" class="stats-panel">
-                        <p class="stat-placeholder">Waiting for algorithms to run...</p>
+                <div class="panel-section mini-stats-section">
+                    <h3 class="section-label">LIVE STATS</h3>
+                    <div class="mini-stats">
+                        <div class="mini-stat"><span class="ms-label">Path Length</span><span class="ms-val" id="miniPath">—</span></div>
+                        <div class="mini-stat"><span class="ms-label">Steps Taken</span><span class="ms-val" id="miniSteps">—</span></div>
                     </div>
                 </div>
-
-                <button id="runBtn" class="btn btn-execute">RUN ALGORITHMS</button>
+                <button id="runBtn" class="btn btn-execute" disabled>
+                    <span id="runBtnText">FINISH YOUR PATH FIRST</span>
+                </button>
             </div>
         </div>
     </div>
 
-    <!-- SCREEN 3: RESULTS SCREEN -->
+    <!-- ========== RESULTS SCREEN ========== -->
     <div id="screen-results" class="screen">
-        <div class="results-content">
+        <div class="results-scroll">
+            <div class="winner-banner glass-card" id="winnerBanner">
+                <div class="winner-trophy" id="winnerTrophy">🏆</div>
+                <h2 class="winner-label" id="winnerLabel">WINNER</h2>
+                <p class="winner-name" id="winnerName">—</p>
+                <p class="winner-detail" id="winnerDetail">—</p>
+            </div>
             <h2 class="round-title">ROUND COMPLETE</h2>
-            
             <div class="table-container">
                 <table class="results-table">
                     <thead>
                         <tr>
-                            <th>Algorithm</th>
+                            <th>Contestant</th>
                             <th>Path Length</th>
                             <th>Steps Explored</th>
-                            <th>Time Taken</th>
-                            <th>Efficiency Score</th>
+                            <th>Time</th>
+                            <th>Efficiency</th>
+                            <th>Result</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        <tr class="row-player">
-                            <td>Player</td>
-                            <td>-</td>
-                            <td>-</td>
-                            <td>-</td>
-                            <td>-</td>
-                        </tr>
-                        <tr class="row-bfs">
-                            <td>BFS</td>
-                            <td id="bfs-path">-</td>
-                            <td id="bfs-steps">-</td>
-                            <td id="bfs-time">-</td>
-                            <td id="bfs-efficiency">-</td>
-                        </tr>
-                        <tr class="row-dfs">
-                            <td>DFS</td>
-                            <td id="dfs-path">-</td>
-                            <td id="dfs-steps">-</td>
-                            <td id="dfs-time">-</td>
-                            <td id="dfs-efficiency">-</td>
-                        </tr>
-                        <tr class="row-dijkstra">
-                            <td>Dijkstra</td>
-                            <td id="dijkstra-path">-</td>
-                            <td id="dijkstra-steps">-</td>
-                            <td id="dijkstra-time">-</td>
-                            <td id="dijkstra-efficiency">-</td>
-                        </tr>
-                        <tr class="row-astar winner-row">
-                            <td class="winner-label">🏆 A*</td>
-                            <td id="astar-path">-</td>
-                            <td id="astar-steps">-</td>
-                            <td id="astar-time">-</td>
-                            <td id="astar-efficiency">-</td>
-                        </tr>
-                    </tbody>
+                    <tbody id="resultsBody"></tbody>
                 </table>
             </div>
-
-            <div class="button-group-row justify-center mt-30">
-                <button class="btn btn-primary btn-large" onclick="showScreen('screen-game')">PLAY AGAIN</button>
-                <button class="btn btn-secondary btn-large" onclick="showScreen('screen-start')">CHANGE MAP</button>
+            <div class="results-actions">
+                <button class="btn btn-primary btn-large" onclick="showScreen('screen-leaderboard'); loadLeaderboard();">🏅 LEADERBOARD</button>
+                <button class="btn btn-secondary btn-large" onclick="showScreen('screen-difficulty')">🔄 PLAY AGAIN</button>
+                <button class="btn btn-ghost btn-large" onclick="showScreen('screen-login')">🏠 HOME</button>
             </div>
         </div>
     </div>
 
-    <!-- Screen Switching Logic -->
-    <script>
-        function showScreen(id) {
-            document.querySelectorAll('.screen').forEach(screen => {
-                screen.classList.remove('screen-active');
-            });
-            document.getElementById(id).classList.add('screen-active');
-        }
-    </script>
+    <!-- ========== LEADERBOARD SCREEN ========== -->
+    <div id="screen-leaderboard" class="screen">
+        <div class="results-scroll">
+            <button class="btn btn-ghost back-btn" onclick="showScreen('screen-results')">◄ Back</button>
+            <h2 class="round-title">🏅 LEADERBOARD</h2>
+            <div class="lb-filters">
+                <button class="btn btn-filter active" id="filterEasy" onclick="loadLeaderboard('Easy')">Easy</button>
+                <button class="btn btn-filter" id="filterMedium" onclick="loadLeaderboard('Medium')">Medium</button>
+                <button class="btn btn-filter" id="filterHard" onclick="loadLeaderboard('Hard')">Hard</button>
+            </div>
+            <div class="table-container">
+                <table class="results-table" id="leaderboardTable">
+                    <thead>
+                        <tr>
+                            <th>Rank</th>
+                            <th>Player</th>
+                            <th>Efficiency</th>
+                            <th>Path Length</th>
+                            <th>Time (ms)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="leaderboardBody"><tr><td colspan="5">Loading...</td></tr></tbody>
+                </table>
+            </div>
+            <div class="results-actions">
+                <button class="btn btn-primary btn-large" onclick="showScreen('screen-difficulty')">PLAY AGAIN</button>
+            </div>
+        </div>
+    </div>
 
-    <!-- JS Files -->
-    <script src="ui.js"></script>
-    <script src="animator.js"></script>
+    <!-- ========== ALGO RUNNING OVERLAY ========== -->
+    <div id="algoOverlay" class="overlay-mask">
+        <div class="overlay-box glass-card">
+            <div class="spinner"></div>
+            <p class="overlay-text" id="overlayText">Running BFS...</p>
+            <p class="overlay-sub">Watch the algorithm explore the maze!</p>
+        </div>
+    </div>
+
+    <script src="game.js"></script>
     <script src="player.js"></script>
     <script src="algorithms.js"></script>
-    <script src="game.js"></script>
+    <script src="ui.js"></script>
 </body>
 </html>

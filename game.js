@@ -1,363 +1,281 @@
-const TILE = {
-  GRASS: 0,
-  WALL: 1,
-  WATER: 2,
-  SAND: 3,
-  START: 4,
-  END: 5
-};
+const TILE = { GRASS: 0, WALL: 1, WATER: 2, SAND: 3, START: 4, END: 5 };
 
-// Create a 20x20 array called defaultMap, fill all cells with GRASS
-const defaultMap = Array.from({ length: 20 }, () => Array(20).fill(TILE.GRASS));
+// ── Guaranteed-solvable map generator ──
+function generateRandomMap(size) {
+    let map, attempts = 0;
+    do {
+        map = buildMap(size);
+        attempts++;
+    } while (!isSolvable(map, size) && attempts < 30);
 
-// Add WALL clusters
-for (let r = 3; r <= 7; r++) { defaultMap[r][5] = TILE.WALL; defaultMap[r][6] = TILE.WALL; }
-for (let r = 8; r <= 14; r++) { defaultMap[r][10] = TILE.WALL; defaultMap[r][11] = TILE.WALL; }
-for (let r = 3; r <= 8; r++) { defaultMap[r][15] = TILE.WALL; defaultMap[r][16] = TILE.WALL; }
+    // Force solvable if still failing
+    if (!isSolvable(map, size)) {
+        carvePathBFS(map, 1, 1, size - 2, size - 2, size);
+    }
+    return map;
+}
 
-// Add WATER
-for (let r = 12; r <= 14; r++) {
-    for (let c = 3; c <= 6; c++) {
-        defaultMap[r][c] = TILE.WATER;
+function buildMap(size) {
+    const map = Array.from({ length: size }, () => Array(size).fill(TILE.GRASS));
+    const density = size <= 10 ? 0.25 : size <= 20 ? 0.45 : 0.6;
+    const maxCluster = size <= 10 ? 2 : 4;
+
+    // Wall clusters
+    const numWalls = Math.floor(size * density);
+    for (let i = 0; i < numWalls; i++) {
+        const r = 2 + Math.floor(Math.random() * (size - 4));
+        const c = 2 + Math.floor(Math.random() * (size - 4));
+        const h = 1 + Math.floor(Math.random() * maxCluster);
+        const w = 1 + Math.floor(Math.random() * maxCluster);
+        for (let dr = 0; dr < h && r + dr < size; dr++)
+            for (let dc = 0; dc < w && c + dc < size; dc++)
+                map[r + dr][c + dc] = TILE.WALL;
+    }
+
+    // Water patches
+    for (let i = 0; i < Math.floor(size * 0.1); i++) {
+        const r = 2 + Math.floor(Math.random() * (size - 4));
+        const c = 2 + Math.floor(Math.random() * (size - 4));
+        const s = 2 + Math.floor(Math.random() * 3);
+        for (let dr = 0; dr < s && r + dr < size; dr++)
+            for (let dc = 0; dc < s && c + dc < size; dc++)
+                if (map[r + dr][c + dc] !== TILE.WALL)
+                    map[r + dr][c + dc] = TILE.WATER;
+    }
+
+    // Sand patches
+    for (let i = 0; i < Math.floor(size * 0.15); i++) {
+        const r = 1 + Math.floor(Math.random() * (size - 2));
+        const c = 1 + Math.floor(Math.random() * (size - 2));
+        const s = 2 + Math.floor(Math.random() * 4);
+        for (let dr = 0; dr < s && r + dr < size; dr++)
+            for (let dc = 0; dc < s && c + dc < size; dc++)
+                if (map[r + dr][c + dc] === TILE.GRASS)
+                    map[r + dr][c + dc] = TILE.SAND;
+    }
+
+    // Clear start/end zones
+    for (let r = 0; r <= 2; r++) for (let c = 0; c <= 2; c++) if (r < size && c < size) map[r][c] = TILE.GRASS;
+    for (let r = size - 3; r < size; r++) for (let c = size - 3; c < size; c++) if (r >= 0 && c >= 0) map[r][c] = TILE.GRASS;
+
+    map[1][1] = TILE.START;
+    map[size - 2][size - 2] = TILE.END;
+    return map;
+}
+
+function isSolvable(map, size) {
+    const visited = Array.from({ length: size }, () => Array(size).fill(false));
+    const queue = [[1, 1]];
+    visited[1][1] = true;
+    const dirs = [[-1,0],[1,0],[0,-1],[0,1]];
+    while (queue.length > 0) {
+        const [r, c] = queue.shift();
+        if (r === size - 2 && c === size - 2) return true;
+        for (const [dr, dc] of dirs) {
+            const nr = r + dr, nc = c + dc;
+            if (nr >= 0 && nr < size && nc >= 0 && nc < size && !visited[nr][nc]) {
+                const t = map[nr][nc];
+                if (t !== TILE.WALL && t !== TILE.WATER) { visited[nr][nc] = true; queue.push([nr, nc]); }
+            }
+        }
+    }
+    return false;
+}
+
+function carvePathBFS(map, sr, sc, er, ec, size) {
+    const prev = Array.from({ length: size }, () => Array(size).fill(null));
+    const queue = [[sr, sc]];
+    prev[sr][sc] = [-1, -1];
+    const dirs = [[-1,0],[1,0],[0,-1],[0,1]];
+    while (queue.length > 0) {
+        const [r, c] = queue.shift();
+        if (r === er && c === ec) {
+            let [cr, cc] = [er, ec];
+            while (!(cr === sr && cc === sc)) {
+                if (map[cr][cc] !== TILE.START && map[cr][cc] !== TILE.END) map[cr][cc] = TILE.GRASS;
+                [cr, cc] = prev[cr][cc];
+            }
+            return;
+        }
+        for (const [dr, dc] of dirs) {
+            const nr = r + dr, nc = c + dc;
+            if (nr >= 0 && nr < size && nc >= 0 && nc < size && prev[nr][nc] === null) {
+                prev[nr][nc] = [r, c]; queue.push([nr, nc]);
+            }
+        }
     }
 }
 
-// Add SAND
-for (let r = 15; r <= 18; r++) {
-    for (let c = 12; c <= 16; c++) {
-        defaultMap[r][c] = TILE.SAND;
-    }
-}
-
-// Set START and END
-defaultMap[1][1] = TILE.START;
-defaultMap[18][18] = TILE.END;
-
-
+// ── GameGrid Class ──
 class GameGrid {
-    constructor(canvas, map) {
+    constructor(canvas, map, size) {
         this.canvas = canvas;
         this.ctx = canvas.getContext('2d');
         this.map = map;
-        this.tileSize = 30;
-        
-        // State for Wall Drawing Tool
-        this.isDrawingWall = false;
-        this.lastDrawnCell = null;
-
-        // Start animating water tiles
-        this.startWaterAnimation();
+        this.size = size;
+        this.tileSize = 600 / size;
+        this.waterFrame = 0;
+        this._animId = null;
+        this.playerPath = [];   // ordered list of [r,c] player visited
+        this.playerCurrent = null;
     }
 
-    drawTile(row, col, tileType) {
-        const x = col * this.tileSize;
-        const y = row * this.tileSize;
+    drawTile(r, c, type) {
+        const x = c * this.tileSize, y = r * this.tileSize;
+        const ts = this.tileSize;
+        const ctx = this.ctx;
+        ctx.clearRect(x, y, ts, ts);
 
-        // Clear the cell precisely before drawing to avoid artifacts
-        this.ctx.clearRect(x, y, this.tileSize, this.tileSize);
-
-        switch (tileType) {
+        switch (type) {
             case TILE.GRASS:
-                this.ctx.fillStyle = '#2d5a1b';
-                this.ctx.fillRect(x, y, this.tileSize, this.tileSize);
-                
-                // Add exactly 3 small dots (#1e3d12, 2x2px) at fixed positions
-                this.ctx.fillStyle = '#1e3d12';
-                this.ctx.fillRect(x + 5, y + 5, 2, 2);
-                this.ctx.fillRect(x + 22, y + 12, 2, 2);
-                this.ctx.fillRect(x + 10, y + 24, 2, 2);
+                ctx.fillStyle = '#0f172a'; ctx.fillRect(x, y, ts, ts);
+                ctx.fillStyle = 'rgba(255,255,255,0.03)';
+                ctx.fillRect(x + ts * 0.2, y + ts * 0.2, ts * 0.06, ts * 0.06);
+                ctx.fillRect(x + ts * 0.7, y + ts * 0.4, ts * 0.06, ts * 0.06);
                 break;
-                
             case TILE.WALL:
-                this.ctx.fillStyle = '#3d3d3d';
-                this.ctx.fillRect(x, y, this.tileSize, this.tileSize);
-                
-                // Draw inner border (#555, 2px inset)
-                this.ctx.strokeStyle = '#555555';
-                this.ctx.lineWidth = 2;
-                this.ctx.strokeRect(x + 1, y + 1, this.tileSize - 2, this.tileSize - 2);
-                
-                // Add 2 diagonal crack lines (#2a2a2a)
-                this.ctx.strokeStyle = '#2a2a2a';
-                this.ctx.lineWidth = 1;
-                this.ctx.beginPath();
-                this.ctx.moveTo(x + 6, y + 6);
-                this.ctx.lineTo(x + 14, y + 14);
-                this.ctx.moveTo(x + 24, y + 18);
-                this.ctx.lineTo(x + 16, y + 26);
-                this.ctx.stroke();
+                ctx.fillStyle = '#1e293b'; ctx.fillRect(x, y, ts, ts);
+                ctx.fillStyle = '#334155';
+                ctx.fillRect(x + 1, y + 1, ts - 2, ts - 2);
+                ctx.fillStyle = '#475569';
+                ctx.fillRect(x + 2, y + 2, ts * 0.3, ts * 0.3);
+                ctx.fillRect(x + ts * 0.6, y + ts * 0.5, ts * 0.3, ts * 0.3);
                 break;
-
-            case TILE.WATER:
-                this.ctx.fillStyle = '#1a3a5c';
-                this.ctx.fillRect(x, y, this.tileSize, this.tileSize);
-                
-                // Add 2 horizontal wavy lines (#2a5a8c), animate via offset
-                this.ctx.strokeStyle = '#2a5a8c';
-                this.ctx.lineWidth = 2;
-                this.ctx.beginPath();
-                
-                let t = performance.now() / 400;
-                let offset1 = Math.sin(t + col + row) * 3;
-                let offset2 = Math.cos(t + col + row) * 3;
-                
-                // Line 1
-                this.ctx.moveTo(x, y + 10 + offset1);
-                this.ctx.quadraticCurveTo(x + 15, y + 10 - offset1, x + 30, y + 10 + offset1);
-                
-                // Line 2
-                this.ctx.moveTo(x, y + 20 + offset2);
-                this.ctx.quadraticCurveTo(x + 15, y + 20 - offset2, x + 30, y + 20 + offset2);
-                
-                this.ctx.stroke();
+            case TILE.WATER: {
+                ctx.fillStyle = '#0c1a3a'; ctx.fillRect(x, y, ts, ts);
+                ctx.fillStyle = '#1e3a8a'; ctx.fillRect(x + 1, y + 1, ts - 2, ts - 2);
+                const t = this.waterFrame / 30;
+                ctx.strokeStyle = 'rgba(96,165,250,0.6)'; ctx.lineWidth = ts * 0.08;
+                ctx.beginPath();
+                const mid1 = y + ts * 0.4 + Math.sin(t + c) * ts * 0.08;
+                ctx.moveTo(x + ts * 0.1, mid1);
+                ctx.quadraticCurveTo(x + ts * 0.5, mid1 - ts * 0.1, x + ts * 0.9, mid1);
+                ctx.stroke();
+                ctx.beginPath();
+                const mid2 = y + ts * 0.65 + Math.cos(t + r) * ts * 0.08;
+                ctx.moveTo(x + ts * 0.1, mid2);
+                ctx.quadraticCurveTo(x + ts * 0.5, mid2 + ts * 0.1, x + ts * 0.9, mid2);
+                ctx.stroke();
                 break;
-
+            }
             case TILE.SAND:
-                this.ctx.fillStyle = '#8b7355';
-                this.ctx.fillRect(x, y, this.tileSize, this.tileSize);
-                
-                // Add 3 small specks (#a08060)
-                this.ctx.fillStyle = '#a08060';
-                this.ctx.fillRect(x + 8, y + 8, 2, 2);
-                this.ctx.fillRect(x + 22, y + 12, 2, 2);
-                this.ctx.fillRect(x + 14, y + 22, 2, 2);
+                ctx.fillStyle = '#292014'; ctx.fillRect(x, y, ts, ts);
+                ctx.fillStyle = '#78350f'; ctx.fillRect(x + 1, y + 1, ts - 2, ts - 2);
+                ctx.fillStyle = 'rgba(251,191,36,0.35)';
+                ctx.fillRect(x + ts * 0.25, y + ts * 0.25, ts * 0.08, ts * 0.08);
+                ctx.fillRect(x + ts * 0.6, y + ts * 0.5, ts * 0.08, ts * 0.08);
+                ctx.fillRect(x + ts * 0.4, y + ts * 0.7, ts * 0.08, ts * 0.08);
                 break;
-
-            case TILE.START:
-                this.ctx.fillStyle = '#1a4a1a';
-                this.ctx.fillRect(x, y, this.tileSize, this.tileSize);
-                
-                // Draw center circle (#00ff88) - keeping standard requirement despite theme change.
-                this.ctx.fillStyle = '#00ff88';
-                this.ctx.beginPath();
-                this.ctx.arc(x + 15, y + 15, 8, 0, Math.PI * 2);
-                this.ctx.fill();
-                
-                // Draw white "S" centered
-                this.ctx.fillStyle = '#ffffff';
-                this.ctx.font = 'bold 12px Inter, sans-serif';
-                this.ctx.textAlign = 'center';
-                this.ctx.textBaseline = 'middle';
-                this.ctx.fillText('S', x + 15, y + 15);
+            case TILE.START: {
+                ctx.fillStyle = '#052e16'; ctx.fillRect(x, y, ts, ts);
+                ctx.fillStyle = '#10b981'; ctx.fillRect(x + 1, y + 1, ts - 2, ts - 2);
+                ctx.fillStyle = '#fff'; ctx.font = `bold ${Math.max(8, ts * 0.45)}px Inter,sans-serif`;
+                ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                ctx.fillText('S', x + ts / 2, y + ts / 2);
                 break;
-
-            case TILE.END:
-                this.ctx.fillStyle = '#4a1a1a';
-                this.ctx.fillRect(x, y, this.tileSize, this.tileSize);
-                
-                // Draw center circle (#ff4444)
-                this.ctx.fillStyle = '#ff4444';
-                this.ctx.beginPath();
-                this.ctx.arc(x + 15, y + 15, 8, 0, Math.PI * 2);
-                this.ctx.fill();
-                
-                // Draw white "E" centered
-                this.ctx.fillStyle = '#ffffff';
-                this.ctx.font = 'bold 12px Inter, sans-serif';
-                this.ctx.textAlign = 'center';
-                this.ctx.textBaseline = 'middle';
-                this.ctx.fillText('E', x + 15, y + 15);
+            }
+            case TILE.END: {
+                ctx.fillStyle = '#450a0a'; ctx.fillRect(x, y, ts, ts);
+                ctx.fillStyle = '#ef4444'; ctx.fillRect(x + 1, y + 1, ts - 2, ts - 2);
+                ctx.fillStyle = '#fff'; ctx.font = `bold ${Math.max(8, ts * 0.45)}px Inter,sans-serif`;
+                ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                ctx.fillText('E', x + ts / 2, y + ts / 2);
                 break;
+            }
         }
     }
 
     drawGrid() {
-        for (let r = 0; r < 20; r++) {
-            for (let c = 0; c < 20; c++) {
+        for (let r = 0; r < this.size; r++)
+            for (let c = 0; c < this.size; c++)
                 this.drawTile(r, c, this.map[r][c]);
-            }
-        }
-    }
-
-    drawGridLines() {
-        this.ctx.strokeStyle = '#ffffff08';
-        this.ctx.lineWidth = 1;
+        // grid lines
+        this.ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+        this.ctx.lineWidth = 0.5;
         this.ctx.beginPath();
-        
-        for (let i = 0; i <= 20; i++) {
-            // Horizontal lines
-            this.ctx.moveTo(0, i * this.tileSize);
-            this.ctx.lineTo(600, i * this.tileSize);
-            // Vertical lines
-            this.ctx.moveTo(i * this.tileSize, 0);
-            this.ctx.lineTo(i * this.tileSize, 600);
+        for (let i = 0; i <= this.size; i++) {
+            this.ctx.moveTo(0, i * this.tileSize); this.ctx.lineTo(600, i * this.tileSize);
+            this.ctx.moveTo(i * this.tileSize, 0); this.ctx.lineTo(i * this.tileSize, 600);
         }
-        
         this.ctx.stroke();
     }
 
-    render() {
-        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-        this.drawGrid();
-        this.drawGridLines();
+    render() { this.drawGrid(); }
+
+    clearHighlights() { this.drawGrid(); }
+
+    highlightCell(r, c, color, alpha) {
+        const x = c * this.tileSize, y = r * this.tileSize;
+        this.ctx.globalAlpha = alpha;
+        this.ctx.fillStyle = color;
+        this.ctx.fillRect(x, y, this.tileSize, this.tileSize);
+        this.ctx.globalAlpha = 1;
+    }
+
+    drawPlayerOnTop() {
+        if (!this.playerCurrent) return;
+        const ts = this.tileSize;
+        // Draw trail
+        for (const [r, c] of this.playerPath) {
+            const t = this.map[r][c];
+            if (t !== TILE.START && t !== TILE.END) {
+                this.highlightCell(r, c, '#10b981', 0.35);
+            }
+        }
+        // Draw current position marker
+        const [pr, pc] = this.playerCurrent;
+        const x = pc * ts, y = pr * ts;
+        this.ctx.globalAlpha = 1;
+        this.ctx.fillStyle = '#34d399';
+        this.ctx.beginPath();
+        this.ctx.arc(x + ts / 2, y + ts / 2, Math.max(3, ts * 0.35), 0, Math.PI * 2);
+        this.ctx.fill();
+        // Glow ring
+        this.ctx.strokeStyle = 'rgba(52,211,153,0.5)';
+        this.ctx.lineWidth = Math.max(1, ts * 0.12);
+        this.ctx.beginPath();
+        this.ctx.arc(x + ts / 2, y + ts / 2, Math.max(4, ts * 0.45), 0, Math.PI * 2);
+        this.ctx.stroke();
     }
 
     startWaterAnimation() {
         const animate = () => {
-            let hasWater = false;
-            
-            // Only re-render cells tagged as water to avoid full re-renders
-            for (let r = 0; r < 20; r++) {
-                for (let c = 0; c < 20; c++) {
-                    if (this.map[r][c] === TILE.WATER) {
-                        this.drawTile(r, c, TILE.WATER);
-                        
-                        // Because the grid line overlaps, redraw it precisely for that box
-                        this.ctx.strokeStyle = '#ffffff08';
-                        this.ctx.lineWidth = 1;
-                        this.ctx.strokeRect(c * this.tileSize, r * this.tileSize, this.tileSize, this.tileSize);
-                        
-                        hasWater = true;
-                    }
-                }
-            }
-            this.animationRequestId = requestAnimationFrame(animate);
+            this.waterFrame++;
+            for (let r = 0; r < this.size; r++)
+                for (let c = 0; c < this.size; c++)
+                    if (this.map[r][c] === TILE.WATER) this.drawTile(r, c, TILE.WATER);
+            // Redraw player on top of animation frame
+            this.drawPlayerOnTop();
+            this._animId = requestAnimationFrame(animate);
         };
-        
-        // Start animation immediately 
-        if (!this.animationRequestId) {
-            animate();
-        }
+        this._animId = requestAnimationFrame(animate);
     }
 
-    getCell(pixelX, pixelY) {
-        return {
-            row: Math.floor(pixelY / this.tileSize),
-            col: Math.floor(pixelX / this.tileSize)
-        };
+    stopWaterAnimation() {
+        if (this._animId) { cancelAnimationFrame(this._animId); this._animId = null; }
     }
 
-    setTile(row, col, tileType) {
-        if (row >= 0 && row < 20 && col >= 0 && col < 20) {
-            this.map[row][col] = tileType;
-            this.drawTile(row, col, tileType);
-            
-            // Redraw subset of grid line for that specific tile
-            this.ctx.strokeStyle = '#ffffff08';
-            this.ctx.lineWidth = 1;
-            this.ctx.strokeRect(col * this.tileSize, row * this.tileSize, this.tileSize, this.tileSize);
-        }
-    }
-
-    isWalkable(row, col) {
-        // Bounds check implicitly handled if querying outside grid, 
-        // assuming callers check bounds, but just in case:
-        if (row < 0 || row >= 20 || col < 0 || col >= 20) return false;
-        
-        const t = this.map[row][col];
+    isWalkable(r, c) {
+        if (r < 0 || r >= this.size || c < 0 || c >= this.size) return false;
+        const t = this.map[r][c];
         return t === TILE.GRASS || t === TILE.SAND || t === TILE.START || t === TILE.END;
     }
 
-    highlightCell(row, col, color, alpha) {
-        const x = col * this.tileSize;
-        const y = row * this.tileSize;
-        
-        this.ctx.fillStyle = color;
-        this.ctx.globalAlpha = alpha;
-        this.ctx.fillRect(x, y, this.tileSize, this.tileSize);
-        this.ctx.globalAlpha = 1.0; 
+    getStartPos() {
+        for (let r = 0; r < this.size; r++)
+            for (let c = 0; c < this.size; c++)
+                if (this.map[r][c] === TILE.START) return { row: r, col: c };
+        return { row: 1, col: 1 };
     }
 
-    clearHighlights() {
-        this.render();
+    getEndPos() {
+        for (let r = 0; r < this.size; r++)
+            for (let c = 0; c < this.size; c++)
+                if (this.map[r][c] === TILE.END) return { row: r, col: c };
+        return { row: this.size - 2, col: this.size - 2 };
     }
 
-    // --- WALL DRAWING TOOL ---
-
-    enableWallDrawing() {
-        this.isDrawingWall = false;
-        this.lastDrawnCell = null;
-
-        this.mouseDownHandler = (e) => {
-            this.isDrawingWall = true;
-            this.processDrawEvent(e);
-        };
-
-        this.mouseMoveHandler = (e) => {
-            if (this.isDrawingWall) {
-                this.processDrawEvent(e);
-            }
-        };
-
-        this.mouseUpHandler = () => {
-            this.isDrawingWall = false;
-            this.lastDrawnCell = null;
-        };
-        
-        this.mouseLeaveHandler = () => {
-            this.isDrawingWall = false;
-            this.lastDrawnCell = null;
-        };
-
-        this.canvas.addEventListener('mousedown', this.mouseDownHandler);
-        this.canvas.addEventListener('mousemove', this.mouseMoveHandler);
-        this.canvas.addEventListener('mouseup', this.mouseUpHandler);
-        this.canvas.addEventListener('mouseleave', this.mouseLeaveHandler);
-    }
-
-    disableWallDrawing() {
-        if (this.mouseDownHandler) {
-            this.canvas.removeEventListener('mousedown', this.mouseDownHandler);
-            this.canvas.removeEventListener('mousemove', this.mouseMoveHandler);
-            this.canvas.removeEventListener('mouseup', this.mouseUpHandler);
-            this.canvas.removeEventListener('mouseleave', this.mouseLeaveHandler);
-        }
-    }
-
-    processDrawEvent(e) {
-        const rect = this.canvas.getBoundingClientRect();
-        // Scaling ensures accuracy if CSS resized the canvas
-        const scaleX = this.canvas.width / rect.width;
-        const scaleY = this.canvas.height / rect.height;
-        
-        const pixelX = (e.clientX - rect.left) * scaleX;
-        const pixelY = (e.clientY - rect.top) * scaleY;
-
-        const cell = this.getCell(pixelX, pixelY);
-
-        // Bounds strictly inside array
-        if (cell.row >= 0 && cell.row < 20 && cell.col >= 0 && cell.col < 20) {
-            
-            // Avoid drawing the exact same cell over and over during a single mouse stroke
-            if (this.lastDrawnCell && this.lastDrawnCell.row === cell.row && this.lastDrawnCell.col === cell.col) {
-                return;
-            }
-
-            const currentTile = this.map[cell.row][cell.col];
-            
-            // Never overwrite the START or END markers logically or visually
-            if (currentTile !== TILE.START && currentTile !== TILE.END) {
-                this.setTile(cell.row, cell.col, TILE.WALL);
-                this.lastDrawnCell = cell;
-            }
-        }
+    exportGrid() {
+        return this.map.map(row => row.map(t => (t === TILE.WALL || t === TILE.WATER) ? 1 : 0));
     }
 }
-
-// Ensure the game grid renders up properly when the game screen becomes active
-// Intercepting index.html showScreen() logic
-const _originalShowScreen = window.showScreen;
-window.showScreen = function(id) {
-    if (typeof _originalShowScreen === "function") {
-        _originalShowScreen(id);
-    }
-    
-    // When game screen fades in, refresh its canvas fully
-    if (id === 'screen-game' && window.gameGrid) {
-        window.gameGrid.render();
-    }
-};
-
-document.addEventListener("DOMContentLoaded", () => {
-    const canvas = document.getElementById("gameCanvas");
-    if (canvas) {
-        // Initialize the GameGrid object
-        const grid = new GameGrid(canvas, defaultMap);
-        
-        // Initial render
-        grid.render();
-        
-        // Expose globally for UI controls
-        window.gameGrid = grid;
-    }
-});
